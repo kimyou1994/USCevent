@@ -10,15 +10,6 @@ library(methods)
 options(DT.fillContainer = FALSE) 
 options(DT.autoHideNavigation = FALSE)
 
-# thornton Center
-thorn_url <- 'https://music.usc.edu/events/'
-thorn_web <- read_html(thorn_url)
-thorn_event <- thorn_web %>% html_nodes(".event a")
-thorn_event_content <- thorn_web %>% html_nodes(".summary") %>% html_text()
-thorn_event_loc <- thorn_event %>% html_text()
-thorn_event_date <- thorn_web %>% html_nodes(".event-date-start") %>% html_text()
-thorn_event_time <- thorn_web %>% html_nodes(".event-time") %>% html_text()
-
 main_url <- "https://calendar.usc.edu/calendar/day"
 main_web <- read_html(main_url)
 main_event <- main_web %>% html_nodes(".summary a") %>% html_text()
@@ -33,19 +24,7 @@ Events_main <- data.frame("Title" = main_event, "Location" = main_loc, "Content"
                           "Time" = main_event_time, "Link" = main_link, stringsAsFactors=FALSE)
 Events_main$Time <- gsub("(^[^:][0-9]{0,2})([AP]{1}M)","\\1:00\\2",Events_main$Time)
 Events <- Events_main
-
 Events$Time <- as.POSIXct(Events$Time, format = '%I:%M %p')
-
-# ap.corpus <- Corpus(DataframeSource(data.frame(Events["Content"])))
-# ap.corpus <- tm_map(ap.corpus, removePunctuation)
-# ap.corpus <- tm_map(ap.corpus, content_transformer(tolower))
-# ap.corpus <- tm_map(ap.corpus, function(x) removeWords(x, stopwords("english")))
-# ap.tdm <- TermDocumentMatrix(ap.corpus)
-# ap.m <- as.matrix(ap.tdm)
-# ap.v <- sort(rowSums(ap.m),decreasing=TRUE)
-# ap.d <- data.frame(word = names(ap.v),freq=ap.v)
-# table(ap.d$freq)
-# pal2 <- brewer.pal(8,"Dark2")
 
 similar <- function(user_input, contents){
   contents <- gsub("\\s+", " ",tolower(str_replace_all(contents, "[:,\\.\\\n\t]", " ")))
@@ -64,7 +43,7 @@ similar <- function(user_input, contents){
 function(input, output) {
   
   Input <- reactive({
-    user_input <- tolower(c(unlist(str_split(input$Keywords, " "))))
+    user_input <- tolower(c(input$Keywords1, input$Keywords2, input$Keywords3, input$Keywords4))
     Events$weight <- rep(0,nrow(Events))
       for(i in 1:nrow(Events)){
         Events$Weight[i] <- similar(user_input,Events$Content[i])
@@ -73,12 +52,6 @@ function(input, output) {
   }
   )
   
-  # output$wordcloud <- renderPlot(
-  #   {
-  #     wordcloud(ap.d$word,ap.d$freq, scale=c(8,.2),min.freq=3,
-  #               max.words=Inf, random.order=FALSE, rot.per=.15, colors=pal2)
-  #   }
-  # )
   #This is setting for Bubble chart graph
   output$plot <- renderPlotly({
     plot_ly(Input() , x = ~Time, y = ~Weight, type = 'scatter', mode = 'markers', size = ~Weight, color = ~Title, colors = 'Paired',
